@@ -26,7 +26,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout }) => {
     { label: 'Book Appointment', path: '/appointments' }
   ];
 
-  const NEW_LOGO_URL = "https://img.icons8.com/fluency/96/tooth.png";
+  const NEW_LOGO_URL = "https://ytvvqf2doe9bgkjx.public.blob.vercel-storage.com/Teath.png";
 
   return (
     <div className="flex flex-col h-screen bg-transparent overflow-hidden font-sans">

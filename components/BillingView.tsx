@@ -15,6 +15,7 @@ const BillingView: React.FC = () => {
     const [previewType, setPreviewType] = useState<'INVOICE' | 'PRESCRIPTION'>('INVOICE');
 
     const BACKGROUND_IMAGE_URL = "https://ytvvqf2doe9bgkjx.public.blob.vercel-storage.com/Teath.png";
+    const LOGO_URL = "https://ytvvqf2doe9bgkjx.public.blob.vercel-storage.com/Teath.png";
 
     useEffect(() => {
         loadData();
@@ -52,29 +53,36 @@ const BillingView: React.FC = () => {
 
         const drawHeader = (docInstance: any, title: string) => {
             const pageWidth = 210;
-            const headerHeight = 50;
-            docInstance.setFillColor(235, 237, 240); 
-            docInstance.rect(0, 0, 210, headerHeight, 'F');
-            const textStartX = 15;
-            docInstance.setTextColor(30, 35, 45); 
-            docInstance.setFont('helvetica', 'bold');
-            docInstance.setFontSize(22);
-            docInstance.text("CHAINA DENTAL CLINIC", textStartX, 24);
-            docInstance.setTextColor(0, 140, 180); 
-            docInstance.setFontSize(9);
-            docInstance.setFont('helvetica', 'bold');
-            docInstance.text("KACHI KOTHI ROAD, PHOOL NAGAR", textStartX, 30);
+            const headerHeight = 55;
             
-            const boxWidth = 55;
-            const boxHeight = 18;
-            const boxX = pageWidth - boxWidth - 15;
-            const boxY = 15;
-            docInstance.setFillColor(0, 140, 180); 
-            docInstance.roundedRect(boxX, boxY, boxWidth, boxHeight, 4, 4, 'F');
-            docInstance.setTextColor(255, 255, 255);
+            // Draw Blue Background with "Wave" effect (simplified for PDF)
+            docInstance.setFillColor(0, 163, 255); // Blue
+            docInstance.rect(0, 0, 100, headerHeight, 'F');
+            
+            // Draw a subtle curve/triangle to simulate the wave
+            docInstance.setFillColor(255, 255, 255);
+            docInstance.triangle(100, 0, 115, 0, 100, headerHeight, 'F');
+            
+            // Add Logo
+            docInstance.addImage(LOGO_URL, 'PNG', 15, 10, 30, 30);
+            
+            // Text side (Right)
+            const textStartX = 120;
+            
+            docInstance.setTextColor(150, 160, 180); // Light blue-grey
+            docInstance.setFont('helvetica', 'normal');
             docInstance.setFontSize(14);
+            docInstance.text("Chaina", textStartX, 22);
+            
+            docInstance.setTextColor(30, 45, 90); // Dark Blue
             docInstance.setFont('helvetica', 'bold');
-            docInstance.text(title.toUpperCase(), boxX + (boxWidth / 2), boxY + (boxHeight / 2) + 2, { align: 'center' });
+            docInstance.setFontSize(24);
+            docInstance.text("Dental Clinic", textStartX, 32);
+            
+            docInstance.setTextColor(0, 140, 255); // Bright Blue
+            docInstance.setFont('helvetica', 'bold');
+            docInstance.setFontSize(36);
+            docInstance.text(title.toUpperCase(), textStartX, 48);
         };
 
         const drawFooter = (docInstance: any) => {
@@ -113,7 +121,7 @@ const BillingView: React.FC = () => {
 
         if (previewType === 'INVOICE') {
             drawHeader(doc, "Invoice");
-            let contentStart = 65;
+            let contentStart = 75;
             doc.setTextColor(30, 35, 45);
             doc.setFontSize(12);
             doc.setFont('helvetica', 'bold');
@@ -155,7 +163,7 @@ const BillingView: React.FC = () => {
             drawFooter(doc);
         } else {
             drawHeader(doc, "Prescription");
-            let contentStart = 65;
+            let contentStart = 75;
             doc.setTextColor(30, 35, 45);
             doc.setFontSize(12);
             doc.setFont('helvetica', 'bold');
@@ -214,20 +222,23 @@ const BillingView: React.FC = () => {
         (inv.mrn && inv.mrn.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    const renderDocumentHeader = (title: string, isInvoice: boolean) => {
+    const renderDocumentHeader = (title: string) => {
         if (!selectedInvoice) return null;
         return (
-            <div className="bg-[#ebedf0] p-8 -mx-12 -mt-12 mb-12 flex justify-between items-center relative z-10">
-                <div className="flex items-center">
-                    <div>
-                        <h1 className="text-3xl font-black text-gray-900 tracking-tight uppercase leading-none">Chaina Dental Clinic</h1>
-                        <p className="font-black text-[11px] uppercase tracking-widest text-[#008cb4] mt-2">Kachi Kothi Road, Phool Nagar</p>
-                    </div>
+            <div className="flex h-48 -mx-12 -mt-12 mb-12 relative z-10 overflow-hidden bg-white border-b border-gray-100">
+                {/* Left Blue Wave Part */}
+                <div 
+                    className="w-1/2 bg-[#00a3ff] flex items-center justify-center relative"
+                    style={{ clipPath: 'polygon(0 0, 100% 0, 85% 100%, 0% 100%)' }}
+                >
+                    <img src={LOGO_URL} alt="Logo" className="w-24 h-24" />
                 </div>
-                <div className="text-right">
-                    <div className={`${isInvoice ? 'bg-[#008cb4]' : 'bg-purple-600'} text-white px-10 py-4 rounded-xl shadow-lg`}>
-                        <h2 className="text-xl font-black uppercase tracking-widest">{title}</h2>
-                    </div>
+                
+                {/* Right Text Part */}
+                <div className="flex-1 flex flex-col justify-center pl-8">
+                    <p className="text-gray-400 font-bold text-lg uppercase tracking-widest leading-none mb-1">Chaina</p>
+                    <h1 className="text-3xl font-black text-[#1e2d5a] uppercase tracking-tight leading-none mb-4">Dental Clinic</h1>
+                    <h2 className="text-6xl font-black text-[#008cff] uppercase tracking-tighter leading-none">{title}</h2>
                 </div>
             </div>
         );
@@ -285,7 +296,7 @@ const BillingView: React.FC = () => {
                             
                             {previewType === 'INVOICE' ? (
                                 <div className="relative z-10 flex flex-col h-full">
-                                    {renderDocumentHeader('Invoice', true)}
+                                    {renderDocumentHeader('Invoice')}
                                     <div className="space-y-8 flex-1">
                                         <div className="grid grid-cols-2 gap-10">
                                             <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
@@ -329,7 +340,7 @@ const BillingView: React.FC = () => {
                                 </div>
                             ) : (
                                 <div className="relative z-10 flex flex-col h-full">
-                                    {renderDocumentHeader('Prescription', false)}
+                                    {renderDocumentHeader('Prescription')}
                                     <div className="flex-1">
                                         <div className="text-4xl font-serif text-gray-100 mb-6">Rx</div>
                                         <div className="pl-12 space-y-8">
