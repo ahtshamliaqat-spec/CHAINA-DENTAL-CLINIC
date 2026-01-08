@@ -1,0 +1,5 @@
+{
+  "name": "Chaina Dental Clinic Manager",
+  "description": "A comprehensive clinic management system for Chaina Dental Clinic, featuring patient registration, appointment scheduling, clinical documentation, and billing, based on Oracle 19c schema architecture.",
+  "requestFramePermissions": []
+}
