@@ -1,3 +1,4 @@
+
 import { Doctor, Patient, Procedure, Appointment, Visit, Invoice, User, UserRole } from '../types';
 
 export const MOCK_USERS: User[] = [
@@ -8,9 +9,9 @@ export const MOCK_DOCTORS: Doctor[] = [
   { 
     doctor_id: 1, 
     doctor_code: 'DOC001', 
-    registration_no: 'PMDC-44556-S',
-    full_name: 'Dr. Muhammad Saeed', 
-    specialty: 'General Dentist', 
+    registration_no: 'PMDC-12345-B',
+    full_name: 'Dr. Bashir Khan D.H.', 
+    specialty: 'Senior Dental Surgeon', 
     active: 'Y',
     image: 'https://img.freepik.com/free-photo/portrait-successful-mid-adult-doctor-with-crossed-arms_1262-12865.jpg'
   },
@@ -55,6 +56,28 @@ export const MOCK_PATIENTS: Patient[] = [
     dob: '1990-11-02', 
     gender: 'Female', 
     mobile_no: '0305-5555555', 
+    address: 'Phool Nagar' 
+  },
+  { 
+    patient_id: 3, 
+    mrn: 'MRN0003', 
+    password: 'password123',
+    full_name: 'Amina', 
+    father_name: 'Ahmad Khan', 
+    dob: '1995-03-15', 
+    gender: 'Female', 
+    mobile_no: '0306-6666666', 
+    address: 'Phool Nagar' 
+  },
+  { 
+    patient_id: 4, 
+    mrn: 'MRN0004', 
+    password: 'password123',
+    full_name: 'Faiza', 
+    father_name: 'Muhammad Ali', 
+    dob: '1998-07-22', 
+    gender: 'Female', 
+    mobile_no: '0307-7777777', 
     address: 'Phool Nagar' 
   },
 ];

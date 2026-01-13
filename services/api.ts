@@ -13,26 +13,22 @@ let visits = [...MOCK_VISITS];
 let invoices = [...MOCK_INVOICES];
 let prescriptions: Prescription[] = [];
 
-// To support password resets in a mock environment
-// Initialized with Admin: admin123 as requested
 let adminPasswords: Record<string, string> = {
   'Admin': 'admin123'
 };
 
-// Helper to simulate sequences
 const getNextId = (arr: any[]) => arr.length > 0 ? Math.max(...arr.map(i => {
     const vals = Object.values(i);
-    return typeof vals[0] === 'number' ? vals[0] : 0;
+    const firstVal = vals[0];
+    return typeof firstVal === 'number' ? firstVal : 0;
 })) + 1 : 1;
 
 export const ClinicService = {
   // --- Auth Operations ---
   login: async (usernameOrMrn: string, password: string): Promise<User | null> => {
-    // Check Admin users first (using the specific Admin key)
     const admin = MOCK_USERS.find(u => u.username === usernameOrMrn && adminPasswords[u.username] === password);
     if (admin) return admin;
 
-    // Check Patients
     const patient = patients.find(p => p.mrn.toLowerCase() === usernameOrMrn.toLowerCase() && p.password === password);
     if (patient) {
       return {
@@ -55,9 +51,9 @@ export const ClinicService = {
     adminPasswords[username] = newPassword;
   },
 
-  verifyPatientRecovery: async (phone: string): Promise<Patient | null> => {
-    const patient = patients.find(p => p.mobile_no === phone);
-    return patient || null;
+  verifyPatientRecovery: async (phone: string): Promise<Patient[]> => {
+    // Return ALL distinct patient entities sharing this mobile number
+    return patients.filter(p => p.mobile_no.replace(/\D/g, '') === phone.replace(/\D/g, ''));
   },
 
   resetPatientPassword: async (mrn: string, newPassword: string): Promise<void> => {
@@ -130,13 +126,23 @@ export const ClinicService = {
     };
   },
 
-  // --- Write Operations ---
-
   registerPatient: async (patient: Omit<Patient, 'patient_id'>): Promise<Patient> => {
+    // Generate unique MRN ONLY if one isn't requested explicitly
+    let mrn = patient.mrn;
+    if (!mrn) {
+      const mrnIndex = patients.length + 1;
+      mrn = `MRN${String(mrnIndex).padStart(4, '0')}`;
+    }
+    
+    // Ensure the specific patient doesn't already exist with this MRN
+    const existing = patients.find(p => p.mrn.toLowerCase() === mrn.toLowerCase());
+    if (existing) return existing;
+
     const newPatient = { 
-      ...patient, 
+      ...patient,
+      mrn,
       patient_id: getNextId(patients),
-      password: patient.password || 'password123' // Default password for new registrations
+      password: patient.password || 'password123'
     };
     patients = [...patients, newPatient];
     return newPatient;
@@ -154,28 +160,30 @@ export const ClinicService = {
   },
 
   createAppointment: async (appt: Omit<Appointment, 'appt_id' | 'appt_no' | 'status'>): Promise<Appointment> => {
-    // Check for overlaps
+    // Strict requirement: patient_id MUST be provided as the foreign key
+    if (!appt.patient_id) {
+        throw new Error("Patient ID is required to link an appointment.");
+    }
+
     const start = new Date(appt.scheduled_at).getTime();
     const end = start + (appt.duration_min * 60000);
-    const minGap = 15 * 60000; // 15 mins
+    const minGap = 15 * 60000;
 
     const hasOverlap = appointments.some(existing => {
       if (existing.status === 'CANCELLED') return false;
       const exStart = new Date(existing.scheduled_at).getTime();
       const exEnd = exStart + (existing.duration_min * 60000);
-      
-      // Check if new appt starts within existing + gap, or ends within existing + gap
       return (start < exEnd + minGap && end > exStart - minGap);
     });
 
     if (hasOverlap) {
-      throw new Error("This slot overlaps with an existing appointment or violates the 15-minute gap rule.");
+      throw new Error("This slot overlaps with another appointment.");
     }
 
     const newAppt: Appointment = {
       ...appt,
       appt_id: getNextId(appointments),
-      appt_no: `AP${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`,
+      appt_no: `AP${new Date().getFullYear()}-${Math.floor(Math.random() * 9000) + 1000}`,
       status: 'SCHEDULED'
     };
     appointments = [...appointments, newAppt];
@@ -207,6 +215,14 @@ export const ClinicService = {
   updateVisit: async (visitId: number, data: Partial<Visit>): Promise<Visit> => {
     visits = visits.map(v => v.visit_id === visitId ? { ...v, ...data } : v);
     return visits.find(v => v.visit_id === visitId)!;
+  },
+
+  deleteVisitItem: async (visitId: number, itemId: number): Promise<void> => {
+    const visit = visits.find(v => v.visit_id === visitId);
+    if (!visit) return;
+    const updatedItems = (visit.items || []).filter(i => i.item_id !== itemId);
+    const newTotal = updatedItems.reduce((sum, item) => sum + item.amount, 0);
+    visits = visits.map(v => v.visit_id === visitId ? { ...v, items: updatedItems, total_amount: newTotal } : v);
   },
 
   addVisitItem: async (visitId: number, procId: number, customPrice?: number): Promise<VisitItem> => {
@@ -244,6 +260,14 @@ export const ClinicService = {
     };
     prescriptions = [...prescriptions, newRx];
     return newRx;
+  },
+
+  updatePrescription: async (rxId: number, medication: string, instructions: string): Promise<void> => {
+    prescriptions = prescriptions.map(p => p.rx_id === rxId ? { ...p, medication, instructions } : p);
+  },
+
+  deletePrescription: async (rxId: number): Promise<void> => {
+    prescriptions = prescriptions.filter(p => p.rx_id !== rxId);
   },
 
   finalizeVisitAndInvoice: async (visitId: number): Promise<Invoice> => {

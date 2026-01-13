@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { User, Key, UserPlus, Info, Activity, ShieldCheck, LogIn, Phone, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { User, Key, UserPlus, Info, Activity, ShieldCheck, LogIn, Phone, ArrowLeft, CheckCircle2, ChevronRight } from 'lucide-react';
 import { ClinicService } from '../services/api';
+import { Patient } from '../types';
 
 interface LoginProps {
   onLogin: (user: any) => void;
@@ -10,21 +11,21 @@ interface LoginProps {
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
-  const [resetStep, setResetStep] = useState<1 | 2>(1);
+  const [resetStep, setResetStep] = useState<1 | 2 | 3>(1); // 1: Search, 2: Selection (if multiple), 3: New Password
   const [userType, setUserType] = useState<'PATIENT' | 'ADMIN'>('PATIENT');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const NEW_LOGO_URL = "https://img.icons8.com/fluency/96/tooth.png";
+  const [foundPatients, setFoundPatients] = useState<Patient[]>([]);
 
-  // Login form state
+  const NEW_LOGO_URL = "https://ytvvqf2doe9bgkjx.public.blob.vercel-storage.com/Teath.png";
+
   const [loginData, setLoginData] = useState({
-    identifier: '', // MRN or Username
+    identifier: '',
     password: ''
   });
 
-  // Registration form state
   const [regData, setRegData] = useState({
     full_name: '',
     mobile_no: '',
@@ -33,14 +34,12 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     password: ''
   });
 
-  // Password reset state
   const [resetData, setResetData] = useState({
-    username: '', // MRN (recovered or entered)
+    username: '',
     phone: '',
     newPassword: ''
   });
 
-  // Success state for registration
   const [regSuccess, setRegSuccess] = useState<{ mrn: string; password: string } | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -95,23 +94,26 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setFoundPatients([]);
     
     try {
       if (userType === 'ADMIN') {
         const verified = await ClinicService.verifyAdminRecovery(resetData.username, resetData.phone);
         if (verified) {
-          setResetStep(2);
+          setResetStep(3);
         } else {
           setError('Verification failed. Admin details do not match.');
         }
       } else {
-        // Patient Recovery: Search for MRNO using registered mobile number
-        const patient = await ClinicService.verifyPatientRecovery(resetData.phone);
-        if (patient) {
-          setResetData(prev => ({ ...prev, username: patient.mrn }));
+        const results = await ClinicService.verifyPatientRecovery(resetData.phone);
+        if (results.length > 1) {
+          setFoundPatients(results);
           setResetStep(2);
+        } else if (results.length === 1) {
+          setResetData(prev => ({ ...prev, username: results[0].mrn }));
+          setResetStep(3);
         } else {
-          setError('No patient found with this mobile number. Please ensure you are using your registered cell phone.');
+          setError('No patient found with this mobile number.');
         }
       }
     } catch (err) {
@@ -119,6 +121,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const selectPatientForReset = (mrn: string) => {
+    setResetData(prev => ({ ...prev, username: mrn }));
+    setResetStep(3);
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -154,8 +161,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <ShieldCheck size={40} />
           </div>
           <h2 className="text-2xl font-black text-gray-900 mb-2">Registration Successful!</h2>
-          <p className="text-gray-500 mb-8">Please save your credentials securely. You will need them for future logins.</p>
-          
+          <p className="text-gray-500 mb-8">Please save your credentials securely.</p>
           <div className="bg-cyan-50/50 rounded-2xl p-6 mb-8 border border-cyan-100 space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-xs font-black text-cyan-600 uppercase tracking-widest">MR No.</span>
@@ -167,7 +173,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               <span className="font-mono font-bold text-gray-900 text-lg">{regSuccess.password}</span>
             </div>
           </div>
-
           <button 
             onClick={() => {
               setRegSuccess(null);
@@ -187,24 +192,20 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   return (
     <div className="min-h-screen bg-transparent flex items-center justify-center p-6 font-sans">
       <div className="bg-white/90 backdrop-blur-xl max-w-4xl w-full rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-100">
-        
-        {/* Left Branding Panel */}
         <div className="md:w-5/12 bg-cyan-700/95 p-12 text-white flex flex-col justify-between relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32"></div>
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24"></div>
-          
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-8">
               <img src={NEW_LOGO_URL} alt="Logo" className="w-16 h-16 bg-white rounded-2xl p-1 shadow-lg" />
               <div>
-                <h1 className="text-2xl font-black tracking-tight leading-none uppercase">Chaina Dental</h1>
+                <h1 className="text-2xl font-black tracking-tight leading-none uppercase">China Dental</h1>
                 <p className="text-[10px] text-cyan-200 font-bold tracking-[0.2em] uppercase mt-1">Surgery Manager</p>
               </div>
             </div>
             <h2 className="text-4xl font-black leading-tight mb-4">Quality Dental Care for Everyone.</h2>
             <p className="text-cyan-100 text-sm leading-relaxed">The most advanced and friendly clinic management system in Phool Nagar.</p>
           </div>
-
           <div className="relative z-10 space-y-6">
             <div className="flex items-center gap-4 bg-white/10 p-4 rounded-2xl backdrop-blur-md">
               <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><Activity size={20} /></div>
@@ -219,9 +220,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </div>
         </div>
 
-        {/* Right Form Panel */}
         <div className="md:w-7/12 p-8 md:p-12">
-          
           <div className="flex items-center justify-between mb-10">
             {!isResetting && (
                 <div className="bg-gray-100/50 p-1 rounded-2xl flex">
@@ -239,7 +238,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 </button>
                 </div>
             )}
-            
             {userType === 'PATIENT' && !isResetting && (
               <button 
                 onClick={() => { setIsRegistering(!isRegistering); setError(''); }}
@@ -249,7 +247,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 {isRegistering ? <User size={16}/> : <UserPlus size={16} />}
               </button>
             )}
-
             {isResetting && (
                 <button 
                     onClick={() => { setIsResetting(false); setError(''); setResetStep(1); }}
@@ -263,13 +260,13 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           <div>
             <h3 className="text-3xl font-black text-gray-900 mb-2">
               {isResetting 
-                ? (userType === 'PATIENT' ? 'Recover MRNO / Password' : 'Recover Admin Access') 
+                ? (userType === 'PATIENT' ? 'Recovery' : 'Admin Access') 
                 : (isRegistering ? 'Create Account' : `Welcome, ${userType === 'ADMIN' ? 'Admin' : 'Patient'}`)}
             </h3>
             <p className="text-gray-500 mb-8">
               {isResetting 
-                ? (userType === 'PATIENT' ? 'Use your registered cell phone number to find your MRNO.' : 'Enter your admin details to reset your password.') 
-                : (isRegistering ? 'Register to start booking appointments online.' : 'Enter your credentials to access your dashboard.')}
+                ? 'Follow the steps to recover your account.' 
+                : (isRegistering ? 'Register to start booking appointments.' : 'Enter credentials to access your dashboard.')}
             </p>
 
             {error && (
@@ -287,9 +284,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             )}
 
             {isResetting ? (
-                /* RECOVERY FLOW */
                 <div className="space-y-6">
-                    {resetStep === 1 ? (
+                    {resetStep === 1 && (
                         <form onSubmit={handleVerifyRecovery} className="space-y-6">
                              {userType === 'ADMIN' && (
                                 <div className="space-y-2">
@@ -308,7 +304,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                                 </div>
                              )}
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Registered Cell Phone Number</label>
+                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Registered Phone Number</label>
                                 <div className="relative">
                                     <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                                     <input 
@@ -326,20 +322,38 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                                 type="submit" 
                                 className="w-full bg-cyan-700 hover:bg-cyan-800 text-white font-black py-4 rounded-2xl shadow-xl shadow-cyan-700/20 transition-all transform active:scale-95 disabled:opacity-50"
                             >
-                                {loading ? 'Searching...' : (userType === 'PATIENT' ? 'Find My MRNO' : 'Verify Details')}
+                                {loading ? 'Searching...' : 'Continue'}
                             </button>
                         </form>
-                    ) : (
-                        <form onSubmit={handleResetPassword} className="space-y-6">
-                            <div className="bg-cyan-50/80 backdrop-blur-sm border border-cyan-100 rounded-2xl p-6 mb-2 text-center">
-                                <p className="text-[10px] font-black text-cyan-600 uppercase tracking-widest mb-2">Account Identified</p>
-                                <div className="flex flex-col items-center gap-1">
-                                    <p className="text-xs text-gray-500 font-medium">Your MR Number is:</p>
-                                    <p className="text-3xl font-black text-gray-900 tracking-tight font-mono">{resetData.username}</p>
-                                </div>
-                                <p className="text-[10px] text-cyan-500 mt-4 italic">You can now reset your password below or return to login.</p>
+                    )}
+
+                    {resetStep === 2 && (
+                        <div className="space-y-4">
+                            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest px-1">Multiple accounts found for this number:</p>
+                            <div className="space-y-2">
+                                {foundPatients.map(p => (
+                                    <button 
+                                        key={p.mrn}
+                                        onClick={() => selectPatientForReset(p.mrn)}
+                                        className="w-full flex items-center justify-between p-4 bg-gray-50 border border-gray-100 rounded-2xl hover:bg-cyan-50 hover:border-cyan-100 transition-all group"
+                                    >
+                                        <div className="text-left">
+                                            <p className="font-bold text-gray-900">{p.full_name}</p>
+                                            <p className="text-[10px] font-black text-cyan-600 uppercase tracking-widest">{p.mrn}</p>
+                                        </div>
+                                        <ChevronRight size={18} className="text-gray-300 group-hover:text-cyan-500" />
+                                    </button>
+                                ))}
                             </div>
-                            
+                        </div>
+                    )}
+
+                    {resetStep === 3 && (
+                        <form onSubmit={handleResetPassword} className="space-y-6">
+                            <div className="bg-cyan-50/80 border border-cyan-100 rounded-2xl p-6 mb-2 text-center">
+                                <p className="text-[10px] font-black text-cyan-600 uppercase tracking-widest mb-2">Account Identified</p>
+                                <p className="text-3xl font-black text-gray-900 tracking-tight font-mono">{resetData.username}</p>
+                            </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Choose New Password</label>
                                 <div className="relative">
@@ -354,31 +368,17 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                                     />
                                 </div>
                             </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <button 
-                                    type="button"
-                                    onClick={() => {
-                                        setIsResetting(false);
-                                        setLoginData({ ...loginData, identifier: resetData.username });
-                                    }}
-                                    className="bg-gray-100/50 hover:bg-gray-200 text-gray-600 font-black py-4 rounded-2xl transition-all"
-                                >
-                                    Login with MRNO
-                                </button>
-                                <button 
-                                    disabled={loading}
-                                    type="submit" 
-                                    className="bg-cyan-700 hover:bg-cyan-800 text-white font-black py-4 rounded-2xl shadow-xl shadow-cyan-700/20 transition-all transform active:scale-95 disabled:opacity-50"
-                                >
-                                    {loading ? 'Updating...' : 'Set & Login'}
-                                </button>
-                            </div>
+                            <button 
+                                disabled={loading}
+                                type="submit" 
+                                className="w-full bg-cyan-700 hover:bg-cyan-800 text-white font-black py-4 rounded-2xl shadow-xl shadow-cyan-700/20 transition-all transform active:scale-95 disabled:opacity-50"
+                            >
+                                {loading ? 'Updating...' : 'Set & Login'}
+                            </button>
                         </form>
                     )}
                 </div>
             ) : !isRegistering ? (
-              /* LOGIN FORM */
               <form onSubmit={handleLogin} className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">
@@ -396,7 +396,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     />
                   </div>
                 </div>
-
                 <div className="space-y-2">
                   <div className="flex justify-between items-center px-1">
                     <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Password</label>
@@ -405,7 +404,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                         onClick={() => { setIsResetting(true); setResetStep(1); setError(''); setSuccess(''); }}
                         className="text-[10px] font-black text-cyan-700 uppercase tracking-widest hover:underline"
                     >
-                        Forgot MRNO / Password?
+                        Forgot Access?
                     </button>
                   </div>
                   <div className="relative">
@@ -420,7 +419,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     />
                   </div>
                 </div>
-
                 <button 
                   disabled={loading}
                   type="submit" 
@@ -428,15 +426,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 >
                   {loading ? 'Authenticating...' : 'Sign In'}
                 </button>
-                
-                {userType === 'ADMIN' && (
-                  <p className="text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                    Demo Recovery Phone: <span className="text-cyan-700">0333-4216580</span>
-                  </p>
-                )}
               </form>
             ) : (
-              /* REGISTRATION FORM */
               <form onSubmit={handleRegister} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -462,7 +453,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     />
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Birth Date</label>
@@ -486,7 +476,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     </select>
                   </div>
                 </div>
-
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Choose Password</label>
                   <input 
@@ -498,7 +487,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     onChange={e => setRegData({...regData, password: e.target.value})}
                   />
                 </div>
-
                 <button 
                   disabled={loading}
                   type="submit" 

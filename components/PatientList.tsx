@@ -13,7 +13,11 @@ const PatientList: React.FC = () => {
   
   const [newPatient, setNewPatient] = useState<Partial<Patient>>({
     gender: 'Male',
-    dob: ''
+    dob: '',
+    full_name: '',
+    mobile_no: '',
+    father_name: '',
+    address: ''
   });
 
   useEffect(() => {
@@ -27,38 +31,33 @@ const PatientList: React.FC = () => {
 
   const filteredPatients = patients.filter(p => 
     p.full_name.toLowerCase().includes(search.toLowerCase()) || 
-    p.mrn.toLowerCase().includes(search.toLowerCase())
+    p.mrn.toLowerCase().includes(search.toLowerCase()) ||
+    p.mobile_no.includes(search)
   );
 
   const toggleExpand = (id: number) => {
     setExpandedId(expandedId === id ? null : id);
   };
 
-  // Helper to display YYYY-MM-DD as DD/MM/YYYY
   const formatDateDisplay = (isoDate?: string) => {
     if (!isoDate) return '';
     const date = new Date(isoDate);
-    // Use en-GB for DD/MM/YYYY
     return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPatient.full_name && newPatient.mobile_no && newPatient.dob) {
-      const mrn = `MRN${String(patients.length + 1).padStart(4, '0')}`;
-      
-      // Convert DD/MM/YYYY input to YYYY-MM-DD for backend storage
       let dobForStorage = newPatient.dob;
       if (newPatient.dob.includes('/')) {
           const parts = newPatient.dob.split('/');
           if (parts.length === 3) {
-              // Input: 25/12/1990 -> Storage: 1990-12-25
               dobForStorage = `${parts[2]}-${parts[1]}-${parts[0]}`;
           }
       }
 
       await ClinicService.registerPatient({
-        mrn,
+        mrn: '', // Service generates unique MRN
         full_name: newPatient.full_name!,
         father_name: newPatient.father_name || '',
         dob: dobForStorage,
@@ -67,13 +66,9 @@ const PatientList: React.FC = () => {
         address: newPatient.address || ''
       });
       setShowModal(false);
-      setNewPatient({ gender: 'Male', dob: '' });
+      setNewPatient({ gender: 'Male', dob: '', full_name: '', mobile_no: '', father_name: '', address: '' });
       loadData();
     }
-  };
-
-  const handleDobInputChange = (value: string) => {
-    setNewPatient({...newPatient, dob: value});
   };
 
   return (
@@ -92,13 +87,12 @@ const PatientList: React.FC = () => {
         </button>
       </div>
 
-      {/* Search & Filter */}
       <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input 
             type="text" 
-            placeholder="Search by Name or MRN..." 
+            placeholder="Search by Name, MRN or Phone..." 
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -106,7 +100,6 @@ const PatientList: React.FC = () => {
         </div>
       </div>
 
-      {/* List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredPatients.map(patient => {
             const patientAppts = allAppointments.filter(a => a.patient_id === patient.patient_id);
@@ -135,7 +128,10 @@ const PatientList: React.FC = () => {
                       <FileText size={16} className="text-gray-400" />
                       <span>Born: {formatDateDisplay(patient.dob)}</span>
                     </div>
-                    {/* Contact removed from patient detail card for privacy */}
+                    <div className="flex items-center space-x-2">
+                      <Phone size={16} className="text-gray-400" />
+                      <span>{patient.mobile_no}</span>
+                    </div>
                     <div className="flex items-center space-x-2">
                       <MapPin size={16} className="text-gray-400" />
                       <span className="truncate">{patient.address}</span>
@@ -153,7 +149,6 @@ const PatientList: React.FC = () => {
                   </div>
                 </div>
 
-                {/* History Dropdown */}
                 {isExpanded && (
                     <div className="bg-gray-50 p-4 border-t border-gray-100 text-sm">
                         {patientAppts.length === 0 ? (
@@ -184,7 +179,6 @@ const PatientList: React.FC = () => {
         })}
       </div>
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
@@ -236,7 +230,7 @@ const PatientList: React.FC = () => {
                    placeholder="DD/MM/YYYY" 
                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-cyan-500 outline-none" 
                    value={newPatient.dob}
-                   onChange={e => handleDobInputChange(e.target.value)}
+                   onChange={e => setNewPatient({...newPatient, dob: e.target.value})}
                 />
               </div>
 

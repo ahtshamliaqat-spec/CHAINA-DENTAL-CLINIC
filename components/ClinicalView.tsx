@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clipboard, Stethoscope, Save, DollarSign, Pill, Plus, Loader2, CheckCircle, Info, FileText, AlertTriangle, X } from 'lucide-react';
-import { Appointment, Visit, Procedure } from '../types';
+import { Clipboard, Stethoscope, Save, DollarSign, Pill, Plus, Loader2, CheckCircle, Info, FileText, AlertTriangle, X, Trash2, Edit } from 'lucide-react';
+import { Appointment, Visit, Procedure, VisitItem, Prescription } from '../types';
 import { ClinicService } from '../services/api';
 
 const ClinicalView: React.FC = () => {
@@ -22,10 +22,12 @@ const ClinicalView: React.FC = () => {
   // Procedure Form State
   const [selectedProc, setSelectedProc] = useState('');
   const [procPrice, setProcPrice] = useState<number>(0);
+  const [editingItemId, setEditingItemId] = useState<number | null>(null);
 
   // Prescription Form State
   const [medName, setMedName] = useState('');
   const [medInstructions, setMedInstructions] = useState('');
+  const [editingRxId, setEditingRxId] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
@@ -68,26 +70,63 @@ const ClinicalView: React.FC = () => {
       }
   };
 
-  const handleAddProcedure = async () => {
+  const handleAddOrUpdateProcedure = async () => {
     if (currentVisit && selectedProc) {
+      if (editingItemId) {
+          await ClinicService.deleteVisitItem(currentVisit.visit_id, editingItemId);
+      }
       await ClinicService.addVisitItem(currentVisit.visit_id, parseInt(selectedProc), procPrice);
       const updated = await ClinicService.getVisitByApptId(activeAppt!.appt_id);
       setCurrentVisit(updated || null);
       setSelectedProc('');
       setProcPrice(0);
-      showNotification('Procedure added to bill.');
+      setEditingItemId(null);
+      showNotification(editingItemId ? 'Procedure updated.' : 'Procedure added to bill.');
     }
   };
 
-  const handleAddPrescription = async () => {
+  const handleDeleteProcedure = async (itemId: number) => {
+      if (currentVisit) {
+          await ClinicService.deleteVisitItem(currentVisit.visit_id, itemId);
+          const updated = await ClinicService.getVisitByApptId(activeAppt!.appt_id);
+          setCurrentVisit(updated || null);
+          showNotification('Procedure removed from bill.');
+      }
+  };
+
+  const handleEditProcedure = (item: VisitItem) => {
+      setSelectedProc(item.procedure_id.toString());
+      setProcPrice(item.amount);
+      setEditingItemId(item.item_id);
+  };
+
+  const handleAddOrUpdatePrescription = async () => {
       if (currentVisit && medName) {
-          await ClinicService.addPrescription(currentVisit.visit_id, medName, medInstructions);
+          if (editingRxId) {
+              await ClinicService.updatePrescription(editingRxId, medName, medInstructions);
+          } else {
+              await ClinicService.addPrescription(currentVisit.visit_id, medName, medInstructions);
+          }
           const updated = await ClinicService.getVisitByApptId(activeAppt!.appt_id);
           setCurrentVisit(updated || null);
           setMedName('');
           setMedInstructions('');
-          showNotification('Medication added to Rx.');
+          setEditingRxId(null);
+          showNotification(editingRxId ? 'Rx updated.' : 'Medication added to Rx.');
       }
+  };
+
+  const handleDeletePrescription = async (rxId: number) => {
+      await ClinicService.deletePrescription(rxId);
+      const updated = await ClinicService.getVisitByApptId(activeAppt!.appt_id);
+      setCurrentVisit(updated || null);
+      showNotification('Prescription removed.');
+  };
+
+  const handleEditPrescription = (rx: Prescription) => {
+      setMedName(rx.medication);
+      setMedInstructions(rx.instructions);
+      setEditingRxId(rx.rx_id);
   };
 
   const handleSaveNotes = async () => {
@@ -107,20 +146,15 @@ const ClinicalView: React.FC = () => {
     setShowConfirmModal(false);
     
     try {
-        // 1. Update latest clinical notes before finalization
         await ClinicService.updateVisit(currentVisit.visit_id, { 
           complaint, 
           diagnosis,
           status: 'BILLED'
         });
         
-        // 2. Finalize visit and create the invoice record
         const invoice = await ClinicService.finalizeVisitAndInvoice(currentVisit.visit_id);
-        
-        // 3. Success notification
         showNotification('Session Finalized. Generating PDF...');
         
-        // 4. Navigate to Billing with autoPrint: true to trigger PDF save
         setTimeout(() => {
           navigate('/billing', { 
             state: { 
@@ -140,7 +174,6 @@ const ClinicalView: React.FC = () => {
 
   return (
     <div className="flex flex-col md:flex-row gap-6 h-[calc(100vh-8rem)] relative">
-      {/* Professional Toast Notification */}
       {notification && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-4 fade-in duration-300">
           <div className={`px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border ${
@@ -154,7 +187,6 @@ const ClinicalView: React.FC = () => {
         </div>
       )}
 
-      {/* Sidebar List */}
       <div className="w-full md:w-1/3 bg-white/80 backdrop-blur-md rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
         <div className="p-5 border-b border-gray-100 bg-gray-50/80">
           <h2 className="font-bold text-gray-800 uppercase tracking-wider text-sm">Consultation Queue</h2>
@@ -192,7 +224,6 @@ const ClinicalView: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Clinical Area */}
       <div className="flex-1 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200 overflow-hidden flex flex-col">
         {!activeAppt ? (
           <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-12">
@@ -204,7 +235,6 @@ const ClinicalView: React.FC = () => {
           </div>
         ) : (
           <div className="flex-1 flex flex-col h-full overflow-hidden animate-in fade-in duration-300">
-            {/* Header */}
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-cyan-700 text-white flex items-center justify-center font-black text-lg shadow-lg">
@@ -221,9 +251,7 @@ const ClinicalView: React.FC = () => {
               </div>
             </div>
 
-            {/* Content Scrollable */}
             <div className="flex-1 overflow-y-auto p-8 space-y-10">
-              {/* Clinical Notes */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
                   <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Symptoms / Complaint</label>
@@ -253,7 +281,6 @@ const ClinicalView: React.FC = () => {
 
               <div className="h-px bg-gray-100"></div>
 
-              {/* Treatment Table */}
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -286,12 +313,15 @@ const ClinicalView: React.FC = () => {
                         />
                     </div>
                     <button 
-                        onClick={handleAddProcedure}
+                        onClick={handleAddOrUpdateProcedure}
                         disabled={!selectedProc}
-                        className="bg-cyan-700 text-white px-8 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-cyan-800 disabled:bg-gray-200"
+                        className={`${editingItemId ? 'bg-amber-600' : 'bg-cyan-700'} text-white px-8 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] hover:opacity-90 disabled:bg-gray-200`}
                     >
-                        Add Procedure
+                        {editingItemId ? 'Update Item' : 'Add Procedure'}
                     </button>
+                    {editingItemId && (
+                        <button onClick={() => { setEditingItemId(null); setSelectedProc(''); setProcPrice(0); }} className="px-4 py-3 text-[10px] font-black uppercase text-gray-400">Cancel</button>
+                    )}
                 </div>
 
                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
@@ -300,29 +330,35 @@ const ClinicalView: React.FC = () => {
                             <tr>
                                 <th className="px-6 py-4 text-left">Treatment</th>
                                 <th className="px-6 py-4 text-right">Price</th>
+                                <th className="px-6 py-4 text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {currentVisit?.items?.length === 0 ? (
-                                <tr><td colSpan={2} className="px-6 py-10 text-center text-gray-400 italic">No items added.</td></tr>
+                                <tr><td colSpan={3} className="px-6 py-10 text-center text-gray-400 italic">No items added.</td></tr>
                             ) : (
                                 currentVisit?.items?.map(item => (
                                     <tr key={item.item_id}>
                                         <td className="px-6 py-4 font-bold text-gray-800">{item.proc_name}</td>
                                         <td className="px-6 py-4 text-right font-black text-cyan-700">Rs. {item.amount.toLocaleString()}</td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button onClick={() => handleEditProcedure(item)} className="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg"><Edit size={14}/></button>
+                                                <button onClick={() => handleDeleteProcedure(item.item_id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={14}/></button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))
                             )}
                             <tr className="bg-cyan-50/30">
-                                <td className="px-6 py-5 text-right text-[11px] font-black uppercase text-gray-500">Total Bill:</td>
-                                <td className="px-6 py-5 text-right font-black text-xl text-cyan-800">Rs. {(currentVisit?.total_amount || 0).toLocaleString()}</td>
+                                <td colSpan={2} className="px-6 py-5 text-right text-[11px] font-black uppercase text-gray-500">Total Bill:</td>
+                                <td className="px-6 py-5 text-center font-black text-xl text-cyan-800">Rs. {(currentVisit?.total_amount || 0).toLocaleString()}</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
               </div>
 
-              {/* Prescription */}
               <div className="space-y-6">
                   <div className="flex items-center gap-3">
                       <div className="p-2 bg-purple-100 text-purple-700 rounded-lg"><Pill size={18} /></div>
@@ -350,12 +386,15 @@ const ClinicalView: React.FC = () => {
                           />
                       </div>
                       <button 
-                          onClick={handleAddPrescription}
+                          onClick={handleAddOrUpdatePrescription}
                           disabled={!medName}
-                          className="bg-purple-700 text-white px-8 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-purple-800 disabled:bg-gray-200"
+                          className={`${editingRxId ? 'bg-amber-600' : 'bg-purple-700'} text-white px-8 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] hover:opacity-90 disabled:bg-gray-200`}
                       >
-                          Add Rx
+                          {editingRxId ? 'Update Rx' : 'Add Rx'}
                       </button>
+                      {editingRxId && (
+                          <button onClick={() => { setEditingRxId(null); setMedName(''); setMedInstructions(''); }} className="px-4 py-3 text-[10px] font-black uppercase text-gray-400">Cancel</button>
+                      )}
                   </div>
                   <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
                       <ul className="divide-y divide-gray-50">
@@ -371,6 +410,10 @@ const ClinicalView: React.FC = () => {
                                               <p className="text-xs text-gray-500 font-medium">{rx.instructions}</p>
                                           </div>
                                       </div>
+                                      <div className="flex items-center gap-2">
+                                          <button onClick={() => handleEditPrescription(rx)} className="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg"><Edit size={14}/></button>
+                                          <button onClick={() => handleDeletePrescription(rx.rx_id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={14}/></button>
+                                      </div>
                                   </li>
                               ))
                           )}
@@ -379,7 +422,6 @@ const ClinicalView: React.FC = () => {
               </div>
             </div>
 
-            {/* Footer Main Finalize Button */}
             <div className="p-6 border-t border-gray-100 bg-white/80 backdrop-blur-md flex justify-between items-center">
                 <button 
                     onClick={() => setShowConfirmModal(true)}
@@ -403,7 +445,6 @@ const ClinicalView: React.FC = () => {
         )}
       </div>
 
-      {/* CUSTOM CONFIRMATION MODAL (Replaces window.confirm) */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white rounded-[2rem] shadow-2xl max-w-md w-full overflow-hidden border border-gray-100 animate-in zoom-in-95 duration-200">
