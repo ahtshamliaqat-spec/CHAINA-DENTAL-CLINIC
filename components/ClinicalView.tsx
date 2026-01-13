@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clipboard, Stethoscope, Save, DollarSign, Pill, Plus, Loader2, CheckCircle, Info, FileText, AlertTriangle, X, Trash2, Edit } from 'lucide-react';

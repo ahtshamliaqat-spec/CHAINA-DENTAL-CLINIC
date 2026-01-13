@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Printer, X, Search, FileDown, ShieldCheck, MapPin, Phone, Heart } from 'lucide-react';
@@ -18,7 +17,7 @@ const URDU_MAP: Record<string, string> = {
     '1-0-1 After meal': 'ایک صبح، ایک شام (کھانے کے بعد)',
     '1-1-1': 'صبح، دوپہر، شام',
     '1-0-1': 'صبح، شام',
-    '1-0-0 Before breakfast': 'ایک صبح (ناشتے سے پہلے)',
+    '1-0-0 Before breakfast': 'ایک صبح (ناشٹے سے پہلے)',
     'Once a day': 'دن میں ایک بار',
     'Sadia Bibi': 'سعدیہ بی بی',
     'Irfan Ali': 'عرفان علی',

@@ -12,13 +12,18 @@ import { User, UserRole } from './types';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
-  // Check if user is already logged in (simulated)
   useEffect(() => {
     const savedUser = localStorage.getItem('china_dental_user');
     if (savedUser) {
-      setCurrentUser(JSON.parse(savedUser));
+      try {
+        setCurrentUser(JSON.parse(savedUser));
+      } catch (e) {
+        localStorage.removeItem('china_dental_user');
+      }
     }
+    setInitialized(true);
   }, []);
 
   const handleLogin = (user: User) => {
@@ -31,6 +36,8 @@ const App: React.FC = () => {
     localStorage.removeItem('china_dental_user');
   };
 
+  if (!initialized) return null;
+
   if (!currentUser) {
     return <Login onLogin={handleLogin} />;
   }
@@ -41,27 +48,15 @@ const App: React.FC = () => {
     <Router>
       <Layout onLogout={handleLogout} currentUser={currentUser}>
         <Routes>
-          {/* Patients only get access to certain pages or limited views */}
-          <Route path="/" element={isAdmin ? <Dashboard /> : <Navigate to="/appointments" />} />
+          <Route path="/" element={isAdmin ? <Dashboard /> : <Navigate to="/appointments" replace />} />
           <Route path="/appointments" element={<AppointmentScheduler currentUser={currentUser} />} />
           
-          {/* Admin Protected Routes */}
           {isAdmin && (
             <>
               <Route path="/patients" element={<PatientList />} />
               <Route path="/doctors" element={<DoctorsList />} />
               <Route path="/clinical" element={<ClinicalView />} />
               <Route path="/billing" element={<BillingView />} />
-            </>
-          )}
-
-          {/* Fallback for Patients trying to access Admin pages */}
-          {!isAdmin && (
-            <>
-              <Route path="/patients" element={<Navigate to="/appointments" />} />
-              <Route path="/doctors" element={<Navigate to="/appointments" />} />
-              <Route path="/clinical" element={<Navigate to="/appointments" />} />
-              <Route path="/billing" element={<Navigate to="/appointments" />} />
             </>
           )}
 
