@@ -50,10 +50,10 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout }) => {
                   
                   <div className="flex flex-col items-center md:items-start">
                       <h1 className="text-2xl md:text-[52px] font-black text-[#1e2d3d] tracking-tight uppercase leading-none">
-                          CHAINA DENTAL CLINIC
+                          CHINA DENTAL SURGERY
                       </h1>
-                      <p className="text-[10px] md:text-[14px] font-bold text-[#008cb4] uppercase tracking-wider mt-1 md:mt-2 px-4 md:px-0">
-                          Kachi Kothi Road, Phool Nagar
+                      <p className="text-[10px] md:text-[14px] font-bold text-[#008cb4] uppercase tracking-wider mt-1 md:mt-2 px-4 md:px-0 text-center md:text-left">
+                          AL-MAJEED SHOPPING CENTER KOT RADHA KISHAN ROAD PHOOL NAGAR
                       </p>
                       <div className="flex items-center gap-1 mt-2 md:mt-4 text-[#008cb4] font-black text-[10px] md:text-xs">
                           <span className="bg-[#008cb4] text-white p-0.5 md:p-1 rounded-sm"><Phone size={8} fill="currentColor" /></span>
